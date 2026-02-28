@@ -88,29 +88,67 @@ echo "[8/8] Creating config.json..."
 
 # Prompt user for all mining parameters
 echo ""
+echo "========================================="
+echo "  Wallet Configuration"
+echo "========================================="
+echo ""
 echo "Enter your Verus wallet address:"
 read -r WALLET_ADDRESS
 
 echo ""
-echo "Enter worker name (e.g., phone-1, A03-3):"
-read -r WORKER_NAME
+echo "========================================="
+echo "  Worker Configuration"
+echo "========================================="
+echo ""
+echo "Worker name helps identify this device"
+echo "Examples: phone-1, vibe-21, A03-3"
+echo ""
+read -p "Worker/Rig name: " WORKER_NAME
 
 echo ""
-echo "Enter number of threads (recommended: 4-8):"
-read -r THREADS
+echo "========================================="
+echo "  Thread Configuration"
+echo "========================================="
+echo ""
+echo "Recommended thread counts:"
+echo "  • Budget phones (4-6 cores): 2-4 threads"
+echo "  • Mid-range (6-8 cores): 4-6 threads"
+echo "  • Flagship (8+ cores): 6-8 threads"
+echo ""
+read -p "Number of threads (recommended: 4-8): " THREADS
 
 echo ""
-echo "Enter mining algorithm (default: verus):"
-read -r ALGO
+echo "========================================="
+echo "  Algorithm Configuration"
+echo "========================================="
+echo ""
+echo "Algorithm for mining (default: verus)"
+echo "Press Enter to use verus"
+echo ""
+read -p "Algorithm (or press Enter for verus): " ALGO
 ALGO=${ALGO:-verus}
 
 echo ""
-echo "Enter primary pool address (e.g., stratum+tcp://verus.farm:9999):"
-read -r PRIMARY_POOL
+echo "========================================="
+echo "  Primary Pool Configuration"
+echo "========================================="
+echo ""
+echo "Enter primary pool address"
+echo "Format: stratum+tcp://pool-address.com:port"
+echo "Example: stratum+tcp://verus.farm:9999"
+echo ""
+read -p "Primary pool address: " PRIMARY_POOL
 
 echo ""
-echo "Enter secondary/backup pool address (e.g., stratum+tcp://us.vipor.net:5040):"
-read -r SECONDARY_POOL
+echo "========================================="
+echo "  Backup Pool Configuration"
+echo "========================================="
+echo ""
+echo "Enter secondary/backup pool address"
+echo "Format: stratum+tcp://pool-address.com:port"
+echo "Example: stratum+tcp://us.vipor.net:5040"
+echo ""
+read -p "Backup pool address: " SECONDARY_POOL
 
 # Create config.json
 cat > config.json << EOF
@@ -147,6 +185,18 @@ EOF
 
 chmod +x start.sh
 
+# Save configuration for reconfigure script
+cat > ccminer-config.txt << EOF
+# CCMiner configuration
+# Created: $(date)
+WALLET_ADDRESS="${WALLET_ADDRESS}"
+WORKER_NAME="${WORKER_NAME}"
+THREADS=${THREADS}
+ALGO="${ALGO}"
+PRIMARY_POOL="${PRIMARY_POOL}"
+SECONDARY_POOL="${SECONDARY_POOL}"
+EOF
+
 # Create reconfigure script
 cat > reconfigure.sh << 'RECONFIGURE_EOF'
 #!/data/data/com.termux/files/usr/bin/bash
@@ -158,8 +208,10 @@ cat > reconfigure.sh << 'RECONFIGURE_EOF'
 #########################################
 
 echo "========================================="
-echo "  CCMiner Reconfiguration"
+echo "  CCMiner Reconfiguration Tool"
 echo "========================================="
+echo ""
+echo "This will update your mining configuration"
 echo ""
 
 # Check if config.json exists
@@ -171,54 +223,105 @@ fi
 
 cd ~/ccminer
 
-# Read current configuration
-CURRENT_WALLET=$(grep -o '"user": "[^"]*"' config.json | cut -d'"' -f4 | cut -d'.' -f1)
-CURRENT_WORKER=$(grep -o '"user": "[^"]*"' config.json | cut -d'"' -f4 | cut -d'.' -f2)
-CURRENT_THREADS=$(grep -o '"threads": [0-9]*' config.json | grep -o '[0-9]*')
-CURRENT_ALGO=$(grep -o '"algo": "[^"]*"' config.json | cut -d'"' -f4)
-CURRENT_PRIMARY=$(grep -m1 -o '"url": "[^"]*"' config.json | cut -d'"' -f4)
-CURRENT_BACKUP=$(grep -m2 -o '"url": "[^"]*"' config.json | tail -1 | cut -d'"' -f4)
+# Load current configuration
+if [ -f "ccminer-config.txt" ]; then
+    source ccminer-config.txt
+fi
 
-echo "Current Configuration:"
-echo "  Wallet: ${CURRENT_WALLET}"
-echo "  Worker: ${CURRENT_WORKER}"
-echo "  Threads: ${CURRENT_THREADS}"
-echo "  Algorithm: ${CURRENT_ALGO}"
-echo "  Primary Pool: ${CURRENT_PRIMARY}"
-echo "  Backup Pool: ${CURRENT_BACKUP}"
+echo "What would you like to change?"
 echo ""
-echo "========================================="
+echo "1) Everything (full reconfiguration)"
+echo "2) Algorithm only"
+echo "3) Pools only"
+echo "4) Wallet and/or worker only"
+echo "5) Thread count only"
+echo "6) Edit config.json manually"
 echo ""
+read -p "Enter choice (1-6): " RECONFIG_CHOICE
 
-# Prompt for new values (press Enter to keep current)
-echo "Enter new wallet address (or press Enter to keep current):"
-read -r NEW_WALLET
-WALLET_ADDRESS=${NEW_WALLET:-$CURRENT_WALLET}
+case $RECONFIG_CHOICE in
+    6)
+        nano ~/ccminer/config.json
+        echo ""
+        echo "✓ Configuration edited manually"
+        echo "Restart mining for changes to take effect"
+        exit 0
+        ;;
+esac
 
-echo ""
-echo "Enter new worker name (or press Enter to keep current):"
-read -r NEW_WORKER
-WORKER_NAME=${NEW_WORKER:-$CURRENT_WORKER}
+# Reconfiguration logic
+case $RECONFIG_CHOICE in
+    1)
+        CHANGE_ALL=true
+        ;;
+    2)
+        echo ""
+        echo "Current algorithm: ${ALGO}"
+        echo ""
+        read -p "Enter new algorithm (or press Enter to keep current): " NEW_ALGO
+        if [ ! -z "$NEW_ALGO" ]; then
+            ALGO=$NEW_ALGO
+        fi
+        ;;
+    3)
+        echo ""
+        echo "Current primary pool: ${PRIMARY_POOL}"
+        echo "Current backup pool: ${SECONDARY_POOL}"
+        echo ""
+        read -p "Enter new primary pool (or press Enter to keep current): " NEW_PRIMARY
+        if [ ! -z "$NEW_PRIMARY" ]; then
+            PRIMARY_POOL=$NEW_PRIMARY
+        fi
+        read -p "Enter new backup pool (or press Enter to keep current): " NEW_BACKUP
+        if [ ! -z "$NEW_BACKUP" ]; then
+            SECONDARY_POOL=$NEW_BACKUP
+        fi
+        ;;
+    4)
+        echo ""
+        echo "Current wallet: ${WALLET_ADDRESS}"
+        echo "Current worker: ${WORKER_NAME}"
+        echo ""
+        read -p "Enter new wallet address (or press Enter to keep current): " NEW_WALLET
+        if [ ! -z "$NEW_WALLET" ]; then
+            WALLET_ADDRESS=$NEW_WALLET
+        fi
+        read -p "Enter new worker name (or press Enter to keep current): " NEW_WORKER
+        if [ ! -z "$NEW_WORKER" ]; then
+            WORKER_NAME=$NEW_WORKER
+        fi
+        ;;
+    5)
+        echo ""
+        echo "Current thread count: ${THREADS}"
+        echo ""
+        read -p "Enter new thread count (or press Enter to keep current): " NEW_THREADS
+        if [ ! -z "$NEW_THREADS" ]; then
+            THREADS=$NEW_THREADS
+        fi
+        ;;
+    *)
+        echo "Invalid choice. Exiting."
+        exit 1
+        ;;
+esac
 
-echo ""
-echo "Enter new thread count (or press Enter to keep current):"
-read -r NEW_THREADS
-THREADS=${NEW_THREADS:-$CURRENT_THREADS}
-
-echo ""
-echo "Enter new algorithm (or press Enter to keep current):"
-read -r NEW_ALGO
-ALGO=${NEW_ALGO:-$CURRENT_ALGO}
-
-echo ""
-echo "Enter new primary pool address (or press Enter to keep current):"
-read -r NEW_PRIMARY
-PRIMARY_POOL=${NEW_PRIMARY:-$CURRENT_PRIMARY}
-
-echo ""
-echo "Enter new backup pool address (or press Enter to keep current):"
-read -r NEW_BACKUP
-SECONDARY_POOL=${NEW_BACKUP:-$CURRENT_BACKUP}
+# Full reconfiguration
+if [ "$CHANGE_ALL" = true ]; then
+    echo ""
+    echo "========================================="
+    echo "  Full Reconfiguration"
+    echo "========================================="
+    echo ""
+    
+    read -p "Wallet address: " WALLET_ADDRESS
+    read -p "Worker name: " WORKER_NAME
+    read -p "Thread count: " THREADS
+    read -p "Algorithm (default: verus): " ALGO_INPUT
+    ALGO=${ALGO_INPUT:-verus}
+    read -p "Primary pool (stratum+tcp://...): " PRIMARY_POOL
+    read -p "Backup pool (stratum+tcp://...): " SECONDARY_POOL
+fi
 
 # Backup old config
 cp config.json config.json.backup
@@ -249,9 +352,21 @@ cat > config.json << EOF
 }
 EOF
 
+# Update saved configuration
+cat > ccminer-config.txt << EOF
+# CCMiner configuration
+# Updated: $(date)
+WALLET_ADDRESS="${WALLET_ADDRESS}"
+WORKER_NAME="${WORKER_NAME}"
+THREADS=${THREADS}
+ALGO="${ALGO}"
+PRIMARY_POOL="${PRIMARY_POOL}"
+SECONDARY_POOL="${SECONDARY_POOL}"
+EOF
+
 echo ""
 echo "========================================="
-echo "  Configuration Updated!"
+echo "  ✓ Configuration Updated!"
 echo "========================================="
 echo ""
 echo "New Configuration:"
@@ -271,10 +386,53 @@ RECONFIGURE_EOF
 
 chmod +x reconfigure.sh
 
+# Create info script
+cat > info.sh << EOF
+#!/data/data/com.termux/files/usr/bin/bash
+
+echo "========================================="
+echo "  CCMiner Configuration"
+echo "========================================="
+echo ""
+echo "Wallet: ${WALLET_ADDRESS}"
+echo "Worker: ${WORKER_NAME}"
+echo "Threads: ${THREADS}"
+echo "Algorithm: ${ALGO}"
+echo "Primary Pool: ${PRIMARY_POOL}"
+echo "Backup Pool: ${SECONDARY_POOL}"
+echo ""
+echo "========================================="
+echo "  Commands"
+echo "========================================="
+echo ""
+echo "Start mining:"
+echo "  cd ~/ccminer && ./start.sh"
+echo ""
+echo "Stop mining:"
+echo "  Press Ctrl+C"
+echo ""
+echo "Change configuration:"
+echo "  cd ~/ccminer && ./reconfigure.sh"
+echo ""
+echo "  Reconfigure lets you:"
+echo "  • Switch algorithm"
+echo "  • Change pools (primary and backup)"
+echo "  • Update wallet and worker name"
+echo "  • Adjust thread count"
+echo "  • Edit config.json manually"
+echo ""
+echo "View this info:"
+echo "  cd ~/ccminer && ./info.sh"
+echo ""
+echo "========================================="
+EOF
+
+chmod +x info.sh
+
 # Final instructions
 echo ""
 echo "========================================="
-echo "  Setup Complete!"
+echo "  ✓ Setup Complete!"
 echo "========================================="
 echo ""
 echo "Configuration created:"
@@ -285,18 +443,38 @@ echo "  Algorithm: ${ALGO}"
 echo "  Primary Pool: ${PRIMARY_POOL}"
 echo "  Backup Pool: ${SECONDARY_POOL}"
 echo ""
-echo "To reconfigure settings later:"
-echo "  cd ~/ccminer && ./reconfigure.sh"
+echo "✓ CCMiner automatically switches to backup pool!"
 echo ""
-echo "To edit config manually:"
-echo "  nano ~/ccminer/config.json"
+echo "⚠️  IMPORTANT TIPS:"
 echo ""
-echo "To start mining:"
+echo "  • Disable battery optimization for Termux"
+echo "  • Keep phone plugged in while mining"
+echo "  • Monitor phone temperature closely"
+echo "  • Start with fewer threads if device gets hot"
+echo ""
+echo "========================================="
+echo "  Quick Start Commands"
+echo "========================================="
+echo ""
+echo "Start mining NOW:"
 echo "  cd ~/ccminer && ./start.sh"
 echo ""
-echo "To stop mining:"
-echo "  Press Ctrl+C"
+echo "View your info:"
+echo "  cd ~/ccminer && ./info.sh"
 echo ""
 echo "========================================="
-echo "Ready to mine! Run: cd ~/ccminer && ./start.sh"
+echo "  🔧 Changing Configuration"
 echo "========================================="
+echo ""
+echo "To change pools, wallet, threads, or algorithm"
+echo "run the reconfiguration script:"
+echo ""
+echo "  cd ~/ccminer && ./reconfigure.sh"
+echo ""
+echo "This lets you change settings without"
+echo "rebuilding CCminer!"
+echo ""
+echo "========================================="
+echo "  Ready to mine!"
+echo "========================================="
+echo ""
