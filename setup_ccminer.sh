@@ -3,6 +3,7 @@
 #########################################
 # CCMiner Automated Setup for Termux
 # For Verus Coin Mining
+# GitHub: https://github.com/scratcher14/CCminer-Android
 #########################################
 
 echo "========================================="
@@ -99,6 +100,11 @@ echo "Enter number of threads (recommended: 4-8):"
 read -r THREADS
 
 echo ""
+echo "Enter mining algorithm (default: verus):"
+read -r ALGO
+ALGO=${ALGO:-verus}
+
+echo ""
 echo "Enter primary pool address (e.g., stratum+tcp://verus.farm:9999):"
 read -r PRIMARY_POOL
 
@@ -125,7 +131,7 @@ cat > config.json << EOF
         }
     ],
     "user": "${WALLET_ADDRESS}.${WORKER_NAME}",
-    "algo": "verus",
+    "algo": "${ALGO}",
     "threads": ${THREADS},
     "cpu-priority": 1,
     "retry-pause": 15
@@ -141,6 +147,130 @@ EOF
 
 chmod +x start.sh
 
+# Create reconfigure script
+cat > reconfigure.sh << 'RECONFIGURE_EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+
+#########################################
+# CCMiner Reconfiguration Script
+# Easily update mining settings
+# GitHub: https://github.com/scratcher14/CCminer-Android
+#########################################
+
+echo "========================================="
+echo "  CCMiner Reconfiguration"
+echo "========================================="
+echo ""
+
+# Check if config.json exists
+if [ ! -f ~/ccminer/config.json ]; then
+    echo "Error: config.json not found!"
+    echo "Please run the initial setup first."
+    exit 1
+fi
+
+cd ~/ccminer
+
+# Read current configuration
+CURRENT_WALLET=$(grep -o '"user": "[^"]*"' config.json | cut -d'"' -f4 | cut -d'.' -f1)
+CURRENT_WORKER=$(grep -o '"user": "[^"]*"' config.json | cut -d'"' -f4 | cut -d'.' -f2)
+CURRENT_THREADS=$(grep -o '"threads": [0-9]*' config.json | grep -o '[0-9]*')
+CURRENT_ALGO=$(grep -o '"algo": "[^"]*"' config.json | cut -d'"' -f4)
+CURRENT_PRIMARY=$(grep -m1 -o '"url": "[^"]*"' config.json | cut -d'"' -f4)
+CURRENT_BACKUP=$(grep -m2 -o '"url": "[^"]*"' config.json | tail -1 | cut -d'"' -f4)
+
+echo "Current Configuration:"
+echo "  Wallet: ${CURRENT_WALLET}"
+echo "  Worker: ${CURRENT_WORKER}"
+echo "  Threads: ${CURRENT_THREADS}"
+echo "  Algorithm: ${CURRENT_ALGO}"
+echo "  Primary Pool: ${CURRENT_PRIMARY}"
+echo "  Backup Pool: ${CURRENT_BACKUP}"
+echo ""
+echo "========================================="
+echo ""
+
+# Prompt for new values (press Enter to keep current)
+echo "Enter new wallet address (or press Enter to keep current):"
+read -r NEW_WALLET
+WALLET_ADDRESS=${NEW_WALLET:-$CURRENT_WALLET}
+
+echo ""
+echo "Enter new worker name (or press Enter to keep current):"
+read -r NEW_WORKER
+WORKER_NAME=${NEW_WORKER:-$CURRENT_WORKER}
+
+echo ""
+echo "Enter new thread count (or press Enter to keep current):"
+read -r NEW_THREADS
+THREADS=${NEW_THREADS:-$CURRENT_THREADS}
+
+echo ""
+echo "Enter new algorithm (or press Enter to keep current):"
+read -r NEW_ALGO
+ALGO=${NEW_ALGO:-$CURRENT_ALGO}
+
+echo ""
+echo "Enter new primary pool address (or press Enter to keep current):"
+read -r NEW_PRIMARY
+PRIMARY_POOL=${NEW_PRIMARY:-$CURRENT_PRIMARY}
+
+echo ""
+echo "Enter new backup pool address (or press Enter to keep current):"
+read -r NEW_BACKUP
+SECONDARY_POOL=${NEW_BACKUP:-$CURRENT_BACKUP}
+
+# Backup old config
+cp config.json config.json.backup
+
+# Create new config.json
+cat > config.json << EOF
+{
+    "pools": [
+        {
+            "name": "PRIMARY",
+            "url": "${PRIMARY_POOL}",
+            "timeout": 180,
+            "disabled": 0
+        },
+        {
+            "name": "BACKUP",
+            "url": "${SECONDARY_POOL}",
+            "timeout": 180,
+            "time-limit": 600,
+            "disabled": 0
+        }
+    ],
+    "user": "${WALLET_ADDRESS}.${WORKER_NAME}",
+    "algo": "${ALGO}",
+    "threads": ${THREADS},
+    "cpu-priority": 1,
+    "retry-pause": 15
+}
+EOF
+
+echo ""
+echo "========================================="
+echo "  Configuration Updated!"
+echo "========================================="
+echo ""
+echo "New Configuration:"
+echo "  Wallet: ${WALLET_ADDRESS}"
+echo "  Worker: ${WORKER_NAME}"
+echo "  Threads: ${THREADS}"
+echo "  Algorithm: ${ALGO}"
+echo "  Primary Pool: ${PRIMARY_POOL}"
+echo "  Backup Pool: ${SECONDARY_POOL}"
+echo ""
+echo "Previous config saved as: config.json.backup"
+echo ""
+echo "To start mining with new settings:"
+echo "  ./start.sh"
+echo "========================================="
+RECONFIGURE_EOF
+
+chmod +x reconfigure.sh
+
 # Final instructions
 echo ""
 echo "========================================="
@@ -151,15 +281,18 @@ echo "Configuration created:"
 echo "  Wallet: ${WALLET_ADDRESS}"
 echo "  Worker: ${WORKER_NAME}"
 echo "  Threads: ${THREADS}"
+echo "  Algorithm: ${ALGO}"
 echo "  Primary Pool: ${PRIMARY_POOL}"
 echo "  Backup Pool: ${SECONDARY_POOL}"
 echo ""
-echo "To edit config later:"
+echo "To reconfigure settings later:"
+echo "  cd ~/ccminer && ./reconfigure.sh"
+echo ""
+echo "To edit config manually:"
 echo "  nano ~/ccminer/config.json"
 echo ""
 echo "To start mining:"
-echo "  cd ~/ccminer"
-echo "  ./start.sh"
+echo "  cd ~/ccminer && ./start.sh"
 echo ""
 echo "To stop mining:"
 echo "  Press Ctrl+C"
