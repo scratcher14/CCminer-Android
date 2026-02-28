@@ -21,7 +21,7 @@ Open Termux and run these commands:
 
 ```bash
 # Download the setup script
-curl -O https://raw.githubusercontent.com/scratcher14/CCminer-for-Verus/main/setup_ccminer.sh
+curl -O https://raw.githubusercontent.com/scratcher14/CCminer-Android/main/setup_ccminer.sh
 
 # Make it executable
 chmod +x setup_ccminer.sh
@@ -57,7 +57,7 @@ cd ~/ccminer
 5. Configures build for ARM architecture (Cortex-A55)
 6. Compiles CCminer (takes 10-20 minutes)
 7. Creates configuration file with your settings
-8. Sets up easy start script
+8. Sets up easy start script and reconfigure script
 
 ## 📊 Recommended Settings
 
@@ -79,7 +79,22 @@ Some popular options:
 
 ## 🛠️ Managing Your Miner
 
-### Edit Configuration
+### Reconfigure Settings (Easy Way)
+To change pools, wallet, threads, or other settings:
+```bash
+cd ~/ccminer
+./reconfigure.sh
+```
+
+This will let you update:
+- Wallet address
+- Worker name
+- Thread count
+- Primary pool
+- Secondary pool
+- Mining algorithm (for future coins on same algo)
+
+### Edit Configuration Manually
 ```bash
 nano ~/ccminer/config.json
 ```
@@ -154,6 +169,7 @@ To stop:
 ├── ccminer              # Main miner executable
 ├── config.json          # Mining configuration
 ├── start.sh             # Easy start script
+├── reconfigure.sh       # Reconfiguration script
 ├── build.sh             # Build script
 └── configure.sh         # Configuration script
 ```
@@ -170,6 +186,7 @@ git pull
 
 ## 🆘 Support & Resources
 
+- **GitHub Repository**: [https://github.com/scratcher14/CCminer-Android](https://github.com/scratcher14/CCminer-Android)
 - **Verus Community**: [https://verus.io](https://verus.io)
 - **Cell Hasher**: [https://cellhasher.com/](https://cellhasher.com/) - Mobile mining community, resources, and [Discord server](https://discord.gg/ncCpaAEN)
 - **VaultFarm YouTube**: [Tutorial videos and mining guides](https://youtube.com/@vaultfarm?si=CY_Vt_PhnMqvhx8P)
