@@ -86,13 +86,13 @@ cd ~/ccminer
 ./reconfigure.sh
 ```
 
-This will let you update:
-- Wallet address
-- Worker name
-- Thread count
-- Primary pool
-- Secondary pool
-- Mining algorithm (for future coins on same algo)
+The reconfiguration tool offers these options:
+1. **Everything** - Full reconfiguration of all settings
+2. **Algorithm only** - Switch to different mining algorithm
+3. **Pools only** - Update primary and/or backup pools
+4. **Wallet and/or worker only** - Change wallet address or worker name
+5. **Thread count only** - Adjust CPU threads
+6. **Edit config.json manually** - Direct file editing with nano
 
 ### Edit Configuration Manually
 ```bash
